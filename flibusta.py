@@ -1,8 +1,6 @@
-from bs4 import BeautifulSoup
 import requests
-import os
-#import Levenshtein
 from database import Database
+from gridfs import GridFS
 
 
 url = 'https://flibusta.is'
@@ -23,14 +21,7 @@ def download_book(book):
     book_url = f'{url}/b/{book.get("ID")}/mobi'
     try:
         response = requests.get(book_url)
-        if len(response.content) > 16000000:
-            if isinstance(book.get("ID"), int) and Database.find_one('big_size_books', query={'ID': book.get("ID")}) is None:
-                Database.insert('big_size_books', {'ID': book.get("ID")})
-            else:
-                with open('not_uploaded.txt', 'a') as f:
-                    f.write(f'{book.get("ID")} - {book.get("Title")} - Size: {len(response.content)}\n')
-                
-            return  
+     
     except Exception as e:
         with open('errors.txt', 'a') as f:
             f.write(f'{book.get("ID")} - {book.get("Title")}\t{e}\n')
@@ -47,13 +38,18 @@ def download_book(book):
         content += chunk
 
      
-
-    book['content'] = content
     book['type'] = filename.split('.')[-1]
     book['downloaded'] = True
+    del(book['content'])
+    
     try:
-        Database.update('books', query={'ID': book.get('ID')}, data=book)
-        print(f'Uploaded {book.get("Title")} with id {book.get('ID')}')
+        file_id =fs.put(content, filename=f'{book.get("ID")}.{book.get("type")}')
+        book['file_id'] = file_id
+        Database.replace(
+                collection= 'books',
+                query = {'_id': book.get('_id')},
+                data = book,
+                )
     except Exception as e:
         with open('errors.txt', 'a') as f:
             f.write(f'{book.get("ID")} - {book.get("Title")}\n')
@@ -64,6 +60,7 @@ def get_books(skip=0, limit=1000):
     except Exception as e:
         print(f'{e}')
     for book in data:
+        print(f'Downloading {book.get("Title")} with id {book.get("ID")}')
         db_data = [ b for b in Database.find('books',query={'ID': book.get('ID')})]
         if len(db_data) > 1:
             uploaded = True if len([b for b in db_data if b.get('downloaded')]) > 0 else False
@@ -75,13 +72,25 @@ def get_books(skip=0, limit=1000):
         if book.get('downloaded'):
             print(f'Already downloaded {book.get("Title")} with id {book.get("ID")}')
             continue
-        if Database.find_one('big_size_books', query={'ID': book.get('ID')}) or Database.find_one('book_ids', query={'ID': book.get('ID')}):
+        '''if Database.find_one('big_size_books', query={'ID': book.get('ID')}) or Database.find_one('book_ids', query={'ID': book.get('ID')}):
             print(f'Big file {book.get("Title")} with id {book.get("ID")}')
-            continue
+            continue'''
         download_book(book)
     return data
 
 
 if __name__ == '__main__':
     db = Database.initialize()
+    fs = GridFS(Database.DATABASE)
+    '''books = Database.find('books', query={'downloaded': True})
+    for book in books:
+        content = book.get('content')
+        if content:
+            file_id =fs.put(content, filename=f'{book.get("ID")}.{book.get("type")}')
+            Database.update(
+                collection= 'books',
+                query = {'_id': book.get('_id')},
+                data = {'$unset': {'content': ''}, '$set': {'file_id': file_id}},
+                )
+            print(f'Uploaded {book.get("Title")} with id {book.get("ID")}')'''
     books = get_books()

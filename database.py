@@ -1,11 +1,11 @@
 
 import pymongo
+import os
 
 
 
 class Database(object):
-    #URI = 'mongodb://mongoDBAdmin:kippUt-5vussy-gisvut@development.itcteh.com:40100/'
-    URI = 'mongodb://mongoDBAdmin:kippUt-5vussy-gisvut@192.168.1.30:40100/'
+    URI = os.getenv('MONGO_URI')
     DATABASE = None
 
     @staticmethod
@@ -26,11 +26,20 @@ class Database(object):
         return Database.DATABASE[collection].find_one(query)
 
     @staticmethod
-    def update(collection, query, data):
+    def replace(collection, query, data):
         try:
             return Database.DATABASE[collection].replace_one(query, data, upsert=True)
         except Exception as e:
             with open('not_saved_to_db.txt', 'a') as f:
+                    f.write(f'{data["ID"]} - {data['Title']}\n')
+
+
+    @staticmethod
+    def update(collection, query, data):
+        try:
+            return Database.DATABASE[collection].update_one(query, data)
+        except Exception as e:
+            with open('not_updated_to_db.txt', 'a') as f:
                     f.write(f'{data["ID"]} - {data['Title']}\n')
 
     @staticmethod
