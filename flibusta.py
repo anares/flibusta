@@ -1,6 +1,7 @@
 import requests
 from database import Database
 from gridfs import GridFS
+from tqdm import tqdm
 
 
 url = 'https://flibusta.is'
@@ -20,8 +21,8 @@ last_page = 1999
 def download_book(book):
     book_url = f'{url}/b/{book.get("ID")}/mobi'
     try:
-        response = requests.get(book_url)
-     
+        response = requests.get(book_url, stream=True)
+        total_size = int(response.headers.get('Content-Length', 0))
     except Exception as e:
         with open('errors.txt', 'a') as f:
             f.write(f'{book.get("ID")} - {book.get("Title")}\t{e}\n')
@@ -33,15 +34,18 @@ def download_book(book):
         filename = f'{str(book.get("Title")).strip()[:20]}.mobi'
         filename = ''.join(c for c in filename if c.isalnum() or c in valid_chars)
     content = b''
-    
-    for chunk in response.iter_content(chunk_size=8192):
-        content += chunk
+    with tqdm(total=total_size, unit='iB', unit_scale=True, desc=filename) as progress_bar:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                content += chunk
+                progress_bar.update(len(chunk))
+
 
      
     book['type'] = filename.split('.')[-1]
     book['downloaded'] = True
     del(book['content'])
-    
+    print(f'Downloaded  {book.get("Title")} with id {book.get("ID")} and size {len(content)}')
     try:
         file_id =fs.put(content, filename=f'{book.get("ID")}.{book.get("type")}')
         book['file_id'] = file_id
@@ -60,7 +64,7 @@ def get_books(skip=0, limit=1000):
     except Exception as e:
         print(f'{e}')
     for book in data:
-        print(f'Downloading {book.get("Title")} with id {book.get("ID")}')
+        #print(f'Downloading {book.get("Title")} with id {book.get("ID")}')
         db_data = [ b for b in Database.find('books',query={'ID': book.get('ID')})]
         if len(db_data) > 1:
             uploaded = True if len([b for b in db_data if b.get('downloaded')]) > 0 else False
