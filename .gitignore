@@ -1,0 +1,50 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+.dist-info/
+build/
+dist/
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# Python coverage reports
+.coverage
+coverage.xml
+*.cover
+*.py[cod].cover
+htmlcov/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Ignore any logs
+*.log
+
+# Environment variable files
+.env
+.env.local
+.env.*.local
+
+# Pytest cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Other files to ignore
+*.pdb
+*.pyproj
+*.sublime-workspace
