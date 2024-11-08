@@ -19,19 +19,22 @@ last_page = 1999
 
 
 def download_book(book):
-    book_url = f'{url}/b/{book.get("ID")}/mobi'
+    book_url = f'{url}/b/{book.get("book_id")}/mobi'
     try:
         response = requests.get(book_url, stream=True)
         total_size = int(response.headers.get('Content-Length', 0))
+        if total_size > 10000000:
+            print(f'Skipping {book.get("title")} with id {book.get("book_id")} and size {total_size}')
+            return
     except Exception as e:
         with open('errors.txt', 'a') as f:
-            f.write(f'{book.get("ID")} - {book.get("Title")}\t{e}\n')
+            f.write(f'{book.get("book_id")} - {book.get("title")}\t{e}\n')
         return
     content_disposition = response.headers.get('Content-Disposition')
     if content_disposition:
         filename = content_disposition.split(';')[1].split('=')[1].strip('"')
     else:
-        filename = f'{str(book.get("Title")).strip()[:20]}.mobi'
+        filename = f'{str(book.get("title")).strip()[:20]}.mobi'
         filename = ''.join(c for c in filename if c.isalnum() or c in valid_chars)
     content = b''
     with tqdm(total=total_size, unit='iB', unit_scale=True, desc=filename) as progress_bar:
@@ -44,10 +47,9 @@ def download_book(book):
      
     book['type'] = filename.split('.')[-1]
     book['downloaded'] = True
-    del(book['content'])
-    print(f'Downloaded  {book.get("Title")} with id {book.get("ID")} and size {len(content)}')
+    print(f'Downloaded  {book.get("title")} with id {book.get("book_id")} and size {len(content)}')
     try:
-        file_id =fs.put(content, filename=f'{book.get("ID")}.{book.get("type")}')
+        file_id =fs.put(content, filename=f'{book.get("book_id")}.{book.get("type")}')
         book['file_id'] = file_id
         Database.replace(
                 collection= 'books',
@@ -56,7 +58,7 @@ def download_book(book):
                 )
     except Exception as e:
         with open('errors.txt', 'a') as f:
-            f.write(f'{book.get("ID")} - {book.get("Title")}\n')
+            f.write(f'{book.get("book_id")} - {book.get("title")}\n')
 
 def get_books(skip=0, limit=1000):
     try:
@@ -65,16 +67,16 @@ def get_books(skip=0, limit=1000):
         print(f'{e}')
     for book in data:
         #print(f'Downloading {book.get("Title")} with id {book.get("ID")}')
-        db_data = [ b for b in Database.find('books',query={'ID': book.get('ID')})]
+        db_data = [ b for b in Database.find('books',query={'book_id': book.get('book_id')})]
         if len(db_data) > 1:
             uploaded = True if len([b for b in db_data if b.get('downloaded')]) > 0 else False
             if uploaded:
-                Database.delete('books',query={'downloaded': False, 'ID': book.get('ID')})
+                Database.delete('books',query={'downloaded': False, 'book_id': book.get('book_id')})
                 continue
         else:
             book = db_data[0]
         if book.get('downloaded'):
-            print(f'Already downloaded {book.get("Title")} with id {book.get("ID")}')
+            print(f'Already downloaded {book.get("title")} with id {book.get("book_id")}')
             continue
         '''if Database.find_one('big_size_books', query={'ID': book.get('ID')}) or Database.find_one('book_ids', query={'ID': book.get('ID')}):
             print(f'Big file {book.get("Title")} with id {book.get("ID")}')
