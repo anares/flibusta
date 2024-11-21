@@ -25,6 +25,12 @@ def download_book(book):
         total_size = int(response.headers.get('Content-Length', 0))
         if total_size > 10000000:
             print(f'Skipping {book.get("title")} with id {book.get("book_id")} and size {total_size}')
+            book['skipped'] = True
+            Database.replace(
+                collection= 'books',
+                query = {'_id': book.get('_id')},
+                data = book,
+                )
             return
     except Exception as e:
         with open('errors.txt', 'a') as f:
@@ -62,7 +68,7 @@ def download_book(book):
 
 def get_books(skip=0, limit=1000):
     try:
-        data = Database.find('books',query={'downloaded': False})
+        data = Database.find('books',query={'downloaded': False, 'skipped': False})
     except Exception as e:
         print(f'{e}')
     for book in data:
