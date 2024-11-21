@@ -5,8 +5,17 @@ import os
 
 
 class Database(object):
-    URI = os.getenv('MONGO_URI')
-    DATABASE = None
+    if os.getenv('MONGO_URI') is None:
+        DBNAME = 'flibusta'
+        DBUSER = 'mongoDBAdmin'
+        DBPASS = 'kippUt-5vussy-gisvut'
+        DBHOST = '192.168.1.30'
+        DBPORT = 40100
+        AUTH_SOURCE = 'admin'
+        URI = f'mongodb://{DBUSER}:{DBPASS}@{DBHOST}:{DBPORT}'
+    else:
+        URI = os.getenv('MONGO_URI')
+        DATABASE = None
 
     @staticmethod
     def initialize():
